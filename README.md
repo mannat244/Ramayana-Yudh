@@ -68,3 +68,4 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 npm run build
 ```
 Outputs static production-ready files to the `dist/` folder.
+
