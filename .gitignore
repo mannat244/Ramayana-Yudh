@@ -1,0 +1,21 @@
+# Dependencies
+/node_modules/
+
+# Local Build Artifacts
+/dist/
+
+# Raw Source Asset Archive (Top-level only, anchored with leading slash)
+/Assets/
+
+# Local Scratch directory
+/scratch/
+
+# Local Test Artifacts & Screenshots
+/tests/
+
+# Local Debug Logs & Telemetry
+*.log
+gameplay_hang_log.json
+gameplay_hang_summary.txt
+.DS_Store
+Thumbs.db
