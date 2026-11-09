@@ -10,16 +10,20 @@ export class AudioDirector {
     this.masterVolume = 0.8;
     this.musicVolume = 0.7;
     this.sfxVolume = 0.8;
+    this.cinematicVolume = 0.85;
+    this.isMuted = false;
 
     // Dedicated HTML5 Audio Elements (single instances to eliminate duplicates)
     this.mainMenuAudio = null;
     this.sandAbilityAudio = null;
     this.wooshAudio = null;
+    this.creditsAudio = null;
 
     // State Tracking
     this.isUnlocked = false;
     this.isMainMenuPlaying = false;
     this.isSandAbilityPlaying = false;
+    this.isCreditsPlaying = false;
     this.pendingMainMenuPlay = false;
 
     // Fade intervals / animation frame trackers
@@ -37,11 +41,18 @@ export class AudioDirector {
   }
 
   getEffectiveMusicVolume() {
+    if (this.isMuted) return 0;
     return Math.max(0, Math.min(1, this.masterVolume * this.musicVolume));
   }
 
   getEffectiveSFXVolume() {
+    if (this.isMuted) return 0;
     return Math.max(0, Math.min(1, this.masterVolume * this.sfxVolume));
+  }
+
+  getEffectiveCinematicVolume() {
+    if (this.isMuted) return 0;
+    return Math.max(0, Math.min(1, this.masterVolume * this.cinematicVolume));
   }
 
   initAudioElements() {
@@ -57,12 +68,18 @@ export class AudioDirector {
     this.sandAbilityAudio = new Audio(ASSET_PATHS.AUDIO?.SAND_ABILITY_BGM || '/assets/audio/sand_ability.mp3');
     this.sandAbilityAudio.loop = false;
     this.sandAbilityAudio.preload = 'auto';
-    this.sandAbilityAudio.volume = this.getEffectiveMusicVolume();
+    this.sandAbilityAudio.volume = this.getEffectiveCinematicVolume();
 
     // 3. Woosh SFX (1.10s celestial release)
     this.wooshAudio = new Audio(ASSET_PATHS.AUDIO?.WOOSH_SFX || '/assets/audio/woosh.wav');
     this.wooshAudio.preload = 'auto';
     this.wooshAudio.volume = this.getEffectiveSFXVolume();
+
+    // 4. End Credits Narration & Soundtrack (~65.4s)
+    this.creditsAudio = new Audio(ASSET_PATHS.AUDIO?.END_CREDITS_BGM || '/assets/audio/end_credits.mp3');
+    this.creditsAudio.loop = false;
+    this.creditsAudio.preload = 'auto';
+    this.creditsAudio.volume = 0;
   }
 
   setupAutoplayUnlock() {
@@ -109,16 +126,43 @@ export class AudioDirector {
     this.updateActiveVolumes();
   }
 
+  /**
+   * Adjust Cinematic Audio Volume (0.0 to 1.0)
+   */
+  setCinematicVolume(val) {
+    this.cinematicVolume = Math.max(0, Math.min(1, val));
+    this.updateActiveVolumes();
+  }
+
+  /**
+   * Set Mute state
+   */
+  setMuted(muted) {
+    this.isMuted = !!muted;
+    this.updateActiveVolumes();
+  }
+
+  toggleMute() {
+    this.setMuted(!this.isMuted);
+    return this.isMuted;
+  }
+
   updateActiveVolumes() {
     const targetMusic = this.getEffectiveMusicVolume();
+    const targetCinematic = this.getEffectiveCinematicVolume();
+    const targetSFX = this.getEffectiveSFXVolume();
+
     if (this.mainMenuAudio && this.isMainMenuPlaying) {
       this.mainMenuAudio.volume = targetMusic;
     }
     if (this.sandAbilityAudio && this.isSandAbilityPlaying) {
-      this.sandAbilityAudio.volume = targetMusic;
+      this.sandAbilityAudio.volume = targetCinematic;
+    }
+    if (this.creditsAudio && this.isCreditsPlaying) {
+      this.creditsAudio.volume = targetMusic;
     }
     if (this.wooshAudio) {
-      this.wooshAudio.volume = this.getEffectiveSFXVolume();
+      this.wooshAudio.volume = targetSFX;
     }
   }
 
@@ -289,12 +333,72 @@ export class AudioDirector {
     scheduleNext(step);
   }
 
+  /**
+   * Play Credits Narration & Soundtrack with smooth fade-in
+   */
+  playCreditsMusic({ fadeIn = true, duration = 1.5, onEnded } = {}) {
+    // Ensure menu and cinematic audio are stopped completely
+    this.stopMainMenuMusic({ fadeOut: false });
+    this.stopSandDuneUltimate({ duration: 0 });
+
+    if (!this.creditsAudio) return;
+
+    this.creditsAudio.currentTime = 0;
+    const targetVolume = this.getEffectiveMusicVolume();
+    this.isCreditsPlaying = true;
+
+    const playPromise = this.creditsAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        if (fadeIn) {
+          this.fadeVolume(this.creditsAudio, 0, targetVolume, duration);
+        } else {
+          this.creditsAudio.volume = targetVolume;
+        }
+        console.log('[AudioDirector] End Credits Soundtrack playing smoothly.');
+      }).catch((err) => {
+        console.warn('[AudioDirector] Credits audio autoplay prevented:', err.message);
+      });
+    }
+
+    this.creditsAudio.onended = () => {
+      this.isCreditsPlaying = false;
+      console.log('[AudioDirector] End Credits Soundtrack completed naturally.');
+      if (typeof onEnded === 'function') {
+        onEnded();
+      }
+    };
+  }
+
+  /**
+   * Stop credits audio with fade-out
+   */
+  stopCreditsMusic({ fadeOut = true, duration = 1.0 } = {}) {
+    if (!this.creditsAudio || !this.isCreditsPlaying) return;
+
+    if (fadeOut) {
+      this.fadeVolume(this.creditsAudio, this.creditsAudio.volume, 0, duration, () => {
+        this.creditsAudio.pause();
+        this.creditsAudio.currentTime = 0;
+        this.isCreditsPlaying = false;
+        console.log('[AudioDirector] Credits audio paused.');
+      });
+    } else {
+      this.creditsAudio.pause();
+      this.creditsAudio.currentTime = 0;
+      this.creditsAudio.volume = 0;
+      this.isCreditsPlaying = false;
+    }
+  }
+
   dispose() {
     this.stopMainMenuMusic({ fadeOut: false });
     this.stopSandDuneUltimate({ duration: 0 });
+    this.stopCreditsMusic({ fadeOut: false });
     this.mainMenuAudio = null;
     this.sandAbilityAudio = null;
     this.wooshAudio = null;
+    this.creditsAudio = null;
   }
 }
 

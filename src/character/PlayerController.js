@@ -93,6 +93,12 @@ export class PlayerController {
     // Pointer Lock State
     this.isPointerLocked = false;
 
+    // Milestone 7 Settings & Pause Hooks
+    this.mouseSensitivity = 0.0022;
+    this.cameraSensitivity = 0.0022;
+    this.invertY = false;
+    this.isPaused = false;
+
     // Environment References & Persistent Targeting Raycaster
     this.environmentModel = null;
     this.skyDomeMesh = null;
@@ -308,6 +314,8 @@ export class PlayerController {
 
   bindEvents() {
     this.onKeyDown = (e) => {
+      if (this.isPaused) return;
+
       if (e.code === 'KeyE') {
         if (this.weaponManager) {
           this.weaponManager.toggleEquip();
@@ -388,13 +396,14 @@ export class PlayerController {
     };
 
     this.onMouseMove = (e) => {
-      if (!this.isPointerLocked) return;
+      if (!this.isPointerLocked || this.isPaused) return;
 
-      const sensitivity = 0.0022;
+      const sensitivity = this.mouseSensitivity || 0.0022;
+      const pitchSign = this.invertY ? -1 : 1;
       this.cameraYaw -= e.movementX * sensitivity;
 
       // Clamp vertical pitch between -28 deg and +38 deg
-      this.cameraPitch = Math.max(-0.48, Math.min(0.65, this.cameraPitch - e.movementY * sensitivity));
+      this.cameraPitch = Math.max(-0.48, Math.min(0.65, this.cameraPitch - e.movementY * sensitivity * pitchSign));
     };
 
     this.onWheel = (e) => {
@@ -424,7 +433,9 @@ export class PlayerController {
 
     // Right-click aiming & left-click shooting
     this.onMouseDown = (e) => {
-      if (e.target && typeof e.target.closest === 'function' && e.target.closest('#gameplay-hud button')) {
+      if (this.isPaused) return;
+
+      if (e.target && typeof e.target.closest === 'function' && e.target.closest('#gameplay-hud button, .pause-overlay, .modal-backdrop')) {
         return;
       }
 
@@ -594,6 +605,11 @@ export class PlayerController {
   }
 
   update(delta) {
+    if (this.isPaused) {
+      this.updateCamera(delta);
+      return;
+    }
+
     // If movement is locked (e.g. during Divine Chant / Sand Dune Ultimate), freeze locomotion
     if (!this.isMovementEnabled || this.animManager?.isChanting) {
       if (this.animManager) {

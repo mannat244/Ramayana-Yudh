@@ -42,6 +42,10 @@ This asset register documents all collected source assets found in the `Assets` 
 | **Ram** | `Warrior_aims_bow_toward_sky.fbx` | `.fbx` | 32,400,876 | 30.90 MB | FBX 7400 Binary | Divine Sky-Aiming Chant Animation (Milestone 6) |
 | **Weapons** | `bow_asset.png` | `.png` | 38,748 | 37.84 KB | PNG Image (1017 × 572) | 2D Weapon Reference Art |
 | **Weapons** | `tribal_basic_bow.glb` | `.glb` | 2,459,224 | 2.35 MB | glTF 2.0 Binary | 3D Equippable Bow Mesh (Milestone 4) |
+| **Audio** | `main_menu.mp3` | `.mp3` | 321,069 | 313.54 KB | MPEG-1 Layer 3, 48 kHz, 128 kbps | Main Menu Atmospheric BGM (20.06s loopable) |
+| **Audio** | `sand_ability.mp3` | `.mp3` | 466,413 | 455.48 KB | MPEG-1 Layer 3, 48 kHz, 64 kbps | Divya Sand Dune Cinematic Ultimate Track (29.16s) |
+| **Audio** | `woosh.wav` | `.wav` | 193,972 | 189.43 KB | RIFF WAVE, 44.1 kHz, 16-bit PCM | Celestial Arrow & Ground Wave Eruption SFX (1.10s) |
+| **Audio** | `end_credits.mp3` | `.mp3` | 1,576,609 | 1.50 MB | MPEG-1 Layer 3, 44.1 kHz, 192 kbps | Final Game Credits Soundtrack & Narration (~65.4s) |
 
 ---
 
@@ -321,6 +325,28 @@ This asset register documents all collected source assets found in the `Assets` 
   - **Scene 3 — Celestial Arrow Ascent ($13.0\text{s} - 18.0\text{s}$):** Apex release at $t = 13.0\text{s}$ accompanied by woosh SFX. Radiant golden arrow ascends vertically into the heavens ($v_y = 42\text{ m/s}$), camera tilts up tracking its ascent into the cloud layer.
   - **Scene 4 — Divine Sand Dune Manifestation ($18.0\text{s} - 25.5\text{s}$):** Wide panoramic battlefield shot (FOV 56°). Massive rolling sand wave ($28$ billow sprites + $80$ tumbling debris stones) sweeps 48 meters across the forest clearing conforming to Rapier terrain elevation.
   - **Scene 5 — Enemy Destruction & Aftermath ($25.5\text{s} - 29.16\text{s}$):** Advancing wave front strikes all living Aasura enemies, triggering authentic directional fall/death animations and incrementing defeat counters. Unspawned wave spawns cancelled. Dust settles, lighting smoothly returns to pine forest daylight, camera glides back behind Shri Ram's shoulder, controls restored, and victory banner displayed.
+
+---
+
+## 7. Milestone 7 Final UI, Audio & Credits Assets
+
+### 7.1 Final Credits Audio
+- **`end_credits.mp3` (Final Game Credits Narration & Soundtrack):**
+  - Source Location: `Assets/music/end_credits.mp3`
+  - Runtime Staged: `public/assets/audio/end_credits.mp3`
+  - File Size: 1,576,609 bytes ($1.50\text{ MB}$).
+  - Audio Format: MPEG-1 Audio Layer 3, Stereo, 44,100 Hz, 192 kbps.
+  - Duration: **~65.4 seconds**.
+  - Deployment: Managed by `AudioDirector.js` and `CreditsScene.js`. Initiated smoothly after the post-Wave-2 fade to black. Fades in over 2.0s, plays throughout the ending presentation, and fades out cleanly upon selecting **PLAY AGAIN** or **RETURN TO MAIN MENU**.
+
+### 7.2 Visual & Typography Assets
+- **Fonts:**
+  - `Cinzel Decorative` (Google Fonts): Used for primary game titles, cinematic headers, and Sanskrit shloka headers.
+  - `Cinzel` (Google Fonts): Used for navigation buttons, UI labels, subheadings, and narrative prose.
+- **UI & Presentation Sprites:**
+  - `Logo.png`: Staged at `public/assets/Main Menu/Logo.png` (800 × 231 PNG). Used on the Main Menu and Loading Screen.
+  - Vector Chakras & Ornaments: Embedded SVG divine chakras and unicode mythic glyphs (`❖`, `ॐ`, `🪔`, `« »`, `⟨ ⟩`).
+
 
 
 

@@ -24,10 +24,10 @@ export class Renderer {
     this.threeRenderer.setPixelRatio(this.pixelRatio);
     this.threeRenderer.outputColorSpace = THREE.SRGBColorSpace;
     this.threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.threeRenderer.toneMappingExposure = 1.2;
+    this.threeRenderer.toneMappingExposure = 1.0;
 
-    // Stable, flicker-free continuous shadow mapping with hardware 4-tap PCF
-    this.threeRenderer.shadowMap.enabled = true;
+    // Lowest settings default: shadows disabled for maximum performance & FPS
+    this.threeRenderer.shadowMap.enabled = false;
     this.threeRenderer.shadowMap.type = THREE.PCFShadowMap;
     this.threeRenderer.shadowMap.autoUpdate = true;
 

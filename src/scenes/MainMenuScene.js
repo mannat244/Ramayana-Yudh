@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ASSET_PATHS } from '../assets/assetManifest.js';
 import { MainMenuUI } from '../ui/MainMenuUI.js';
 import { audioDirector } from '../audio/AudioDirector.js';
+import { gameSettings } from '../core/GameSettings.js';
 
 export class MainMenuScene {
   /**
@@ -113,6 +114,9 @@ export class MainMenuScene {
     this.ui.show();
     audioDirector.playMainMenuMusic({ fadeIn: true });
     this.ramGroup.rotation.y = this.initialRotationY;
+    if (this.sceneManager?.renderer) {
+      gameSettings.applyToRenderer(this.sceneManager.renderer);
+    }
     if (!this.isLoaded) {
       await this.loadSceneAssets();
     }

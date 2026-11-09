@@ -6,6 +6,7 @@ import { SceneManager } from './core/SceneManager.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { LoadingScene } from './scenes/LoadingScene.js';
 import { GameplayScene } from './scenes/GameplayScene.js';
+import { CreditsScene } from './scenes/CreditsScene.js';
 
 // Expose THREE globally for dev tools and test suites
 window.THREE = THREE;
@@ -22,10 +23,12 @@ async function bootstrap() {
   const mainMenuScene = new MainMenuScene(assetLoader);
   const loadingScene = new LoadingScene(assetLoader);
   const gameplayScene = new GameplayScene(assetLoader);
+  const creditsScene = new CreditsScene(assetLoader);
 
   sceneManager.registerScene('mainMenu', mainMenuScene);
   sceneManager.registerScene('loading', loadingScene);
   sceneManager.registerScene('gameplay', gameplayScene);
+  sceneManager.registerScene('credits', creditsScene);
 
   // For test suite debugging access
   window.__sceneManager = sceneManager;

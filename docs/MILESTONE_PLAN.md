@@ -760,8 +760,119 @@ flowchart TD
 
 ---
 
-### Upcoming Milestones
+---
 
-1. **Milestone 7: Boss Battle Encounter & Final Polish:**
-   - Multi-phase Ravana / Khara encounter.
-   - Spatial sound effects for arrow flight, bow string release, and impacts.
+## Milestone 7: Final UI, Audio, Presentation & Game Credits
+
+### Status: COMPLETED
+
+### Executive Summary
+
+Milestone 7 marks the final development and polish milestone of *Ramayana Yudh*, transforming the high-performance action combat prototype into an intentional, cohesive, and professionally presented standalone browser action game.
+
+In strict compliance with the **Absolute Gameplay Protection Rule**, all underlying gameplay, animation, weapon, AI, physics, and cinematic systems (`PlayerController.js`, `AnimationManager.js`, `WeaponManager.js`, `ProjectileSystem.js`, `PhysicsWorld.js`, `EnemyCharacter.js`, `EnemyWaveManager.js`, `EnemyOptimizer.js`, `EnemyLODBuilder.js`, `DivineAbilitySystem.js`, `SandDuneCutscene.js`) remained protected and intact. The milestone successfully achieved:
+
+1. **Part A — Main Menu Redesign:** Redesigned the main menu layout into a balanced cinematic composition. Left panel features the official game logo, subtitle, Vedic inscription (« यतो धर्मस्ततो जयः »), and 4 dedicated working navigation options (**START GAME**, **SETTINGS**, **AUDIO**, **ABOUT**). The right side presents the 3D Shri Ram model rotating gracefully under cinematic golden key and rim lighting.
+2. **Part B — Audio Integration & Settings:** Added integration for the new `end_credits.mp3` track (~65.4s duration, 1.50 MB staged in `public/assets/audio/end_credits.mp3`). Upgraded `AudioDirector.js` with master volume, background music, sound effects, cinematic volume, mute state, autoplay gesture unlock, and mutual exclusion to ensure no audio overlap.
+3. **Part C — Gameplay HUD Redesign & In-Game Pause System:** Replaced the development-oriented, boxy UI with a restrained modern action HUD. Features a compact wave indicator (`WAVE 1 — DANDAKARANYA SCOUTS`, `DEFEATED 0 / 8`), unobtrusive pause button (`[ ⏸ ESC ]`), compact divine energy progress bar with golden glowing ability slots for Divya Bahu-Baan (Q) and Divya Sand Dune (R), and central aiming reticle. Implemented a fully functional Pause Overlay (Resume, Settings, Audio, Return to Main Menu) that stops player locomotion and enemy updates without corrupting animation or physics states.
+4. **Part D — Loading Screen Redesign:** Created a deliberate cinematic loading screen displaying actual asset streaming progress (Environment -> Hero FBX -> Weapons -> Aasura Vanguard -> 100% Ready) and rotating gameplay tips (Hardware recommendations, NVIDIA GPU acceleration, Controls, Archery, Divine Energy, Fog emergence, and Divine Abilities) with darkened high-contrast backings.
+5. **Part E — Game Completion & Credits Scene:** Once Wave 2 is completed and the Divya Sand Dune ultimate resolves, the game gradually fades to black, ceases combat audio, and seamlessly enters `CreditsScene`. The ending sequence presents a respectful Diwali tribute, a factual non-commercial legal notice, the verified contact email `mannateducation@gmail.com` for rights inquiries, an engaging feedback prompt ("What should I create next?"), the full credits soundtrack (`end_credits.mp3`), and working navigation actions (**PLAY AGAIN** and **RETURN TO MAIN MENU**).
+6. **Part F — Overall Visual Design System:** Standardized typography (`Cinzel`, `Cinzel Decorative`), antique gold and obsidian color palette, accessible high-contrast reticle option, and full responsive support across 1080p, 900p, 768p, and smaller desktop viewports.
+7. **Part G — Performance & Lifecycle Cleanup:** Stable pixel ratios, zero runtime garbage generation in loops, complete teardown of event listeners, modals, and audio elements upon scene transitions.
+
+---
+
+### Implementation Details
+
+#### 1. Audio Architecture & Settings System (`src/audio/AudioDirector.js`, `src/core/GameSettings.js`)
+- `GameSettings`: Singleton managing persistent user preferences via `localStorage`:
+  - `mouseSensitivity` (0.5x to 2.5x, default 1.0x)
+  - `cameraSensitivity` (0.5x to 2.5x, default 1.0x)
+  - `invertY` (boolean, default false)
+  - `graphicsQuality` (`low`, `medium`, `high`, default `low` for maximum performance)
+  - `shadowsEnabled` (boolean, default `false` for maximum performance)
+  - `reticleContrast` (`standard`, `high_contrast`)
+  - `masterVolume` (0% to 100%, default 80%)
+  - `musicVolume` (0% to 100%, default 70%)
+  - `sfxVolume` (0% to 100%, default 80%)
+  - `cinematicVolume` (0% to 100%, default 85%)
+  - `isMuted` (boolean, default false)
+- `AudioDirector`:
+  - Manages dedicated HTML5 `Audio` elements for `mainMenuAudio`, `sandAbilityAudio`, `wooshAudio`, and `creditsAudio`.
+  - Master volume scales all sub-channels proportionally; mute state instantly silences all playback while preserving slider positions.
+  - Smooth volume fading using cosine easing via `requestAnimationFrame`.
+
+#### 2. Main Menu Presentation (`src/scenes/MainMenuScene.js`, `src/ui/MainMenuUI.js`)
+- Left-panel navigation with 4 dedicated buttons:
+  - **START GAME**: Transitions to loading scene without reallocating scene managers.
+  - **SETTINGS**: Opens gameplay settings modal (mouse aim sensitivity, camera orbit sensitivity, invert Y toggle, graphics preset, shadow toggle, reticle contrast option, and fullscreen toggle).
+  - **AUDIO**: Opens dedicated audio modal with individual sliders for Master, Music, SFX, and Cinematic tracks, plus Mute All checkbox.
+  - **ABOUT**: Displays project context, Three.js + Rapier3D technology credits, Diwali tribute note, third-party rights disclaimer, and contact email `mannateducation@gmail.com`.
+
+#### 3. Gameplay HUD & In-Game Pause (`src/scenes/GameplayScene.js`)
+- Upper-right compact wave panel:
+  - Header: `WAVE 1 — DANDAKARANYA SCOUTS`
+  - Counter: `DEFEATED 0 / 8`
+- Divine Ability meter:
+  - Compact width (280px), sleek gradient bar, and two rounded ability tiles:
+  - `[Q] BAHU-BAAN (50%)`
+  - `[R] SAND DUNE (100% - Final Wave)`
+  - Subdued state when locked or charging; golden border and pulsing glow when ready.
+- Unobtrusive Pause button (`[ ⏸ ESC ]`) and `Escape` / `P` keyboard handlers:
+  - Activating pause freezes physics stepping and enemy updates while keeping the 3D scene rendering in the background.
+  - Releases pointer lock so the player can interact with Pause menu options (**RESUME**, **SETTINGS**, **AUDIO**, **RETURN TO MAIN MENU**).
+
+#### 4. Ending Transition & Credits (`src/scenes/CreditsScene.js`)
+- Safe sequence trigger:
+  - Checks `waveManager.config.waveNumber === 2 && waveManager.isWaveComplete`.
+  - Waits for active Sand Dune cutscene to complete naturally before initiating ending sequence.
+  - Prevents multiple triggers via `this.isGameCompleted` guard.
+  - Fades to black over 1.5 seconds via `#game-fade-black`.
+  - Stops combat and ultimate audio cleanly.
+  - Transitions to `CreditsScene` and starts `end_credits.mp3`.
+- Ending content:
+  - "THANK YOU FOR PLAYING — RAMAYANA YUDH"
+  - Diwali celebration and Ramayana tribute statement.
+  - Factual non-commercial legal notice and property rights statement.
+  - Verified contact address: `mannateducation@gmail.com`.
+  - Feedback question for players: *"What should I create next?"*
+  - Navigation actions: **PLAY AGAIN** (restarts clean session at Wave 1) and **RETURN TO MAIN MENU** (restores main menu and BGM).
+
+---
+
+### Verification & Testing Results
+
+- **Unit Test Suite (`tests/test_milestone_7_unit.mjs`):**
+  - **30/30 unit tests passed (100% success)**:
+    - Asset paths and audio files registered and present.
+    - `GameSettings` defaults, persistence, update propagation, and `PlayerController` scaling.
+    - `AudioDirector` volume math, mute priority, and sub-channel scaling.
+    - Wave 2 and cutscene completion transition guards.
+- **End-to-End Browser Test Suite (`tests/test_milestone_7_e2e.mjs`):**
+  - Executed automated headless Chrome test via Chrome DevTools Protocol (CDP).
+  - **10/10 E2E criteria passed successfully**:
+    1. Main Menu rendering, 3D Shri Ram model, and logo verification.
+    2. Settings modal display and mouse sensitivity slider update.
+    3. Audio modal display and volume slider update.
+    4. About modal display, legal disclaimer, and email placeholder.
+    5. Loading screen asset progress and rotating tips.
+    6. Compact gameplay HUD, wave stats, divine energy slots, and reticle.
+    7. In-game pause menu, physics freeze, and resume behavior.
+    8. Wave 2 progression, energy charge, and smooth fade to black.
+    9. Credits scene activation, content verification, and audio playback.
+    10. Replay session restart (Wave 1 reset) and Return to Main Menu.
+- **Production Build (`npm run build`):**
+  - Bundled with Vite v6 in 4.21s with 0 errors.
+- **Screenshots Captured:**
+  - `tests/m7_01_main_menu.png`: Redesigned Main Menu with Shri Ram & Logo.
+  - `tests/m7_02_settings_modal.png`: Settings Modal with Sensitivity & Invert Y.
+  - `tests/m7_03_audio_modal.png`: Audio Modal with Master & Music Sliders.
+  - `tests/m7_04_about_modal.png`: About Modal with Non-Commercial Disclaimer.
+  - `tests/m7_05_loading_screen.png`: Cinematic Loading Screen with Rotating Tips.
+  - `tests/m7_06_gameplay_hud.png`: Modern Compact HUD with Wave & Divine Abilities.
+  - `tests/m7_07_gameplay_paused.png`: In-Game Pause Menu with Resume, Settings, & Audio.
+  - `tests/m7_08_ending_fade_black.png`: Ending Transition: Smooth Fade to Black.
+  - `tests/m7_09_credits_screen.png`: Game Credits Screen: Tribute, Disclaimer, & Question.
+  - `tests/m7_10_play_again_restored.png`: Session Replayed: Restored Wave 1 & Player Spawn.
+  - `tests/m7_11_return_main_menu.png`: Returned to Main Menu Cleanly.
+

@@ -44,7 +44,8 @@ export const ASSET_PATHS = {
   AUDIO: {
     MAIN_MENU_BGM: '/assets/audio/main_menu.mp3',
     SAND_ABILITY_BGM: '/assets/audio/sand_ability.mp3',
-    WOOSH_SFX: '/assets/audio/woosh.wav'
+    WOOSH_SFX: '/assets/audio/woosh.wav',
+    END_CREDITS_BGM: '/assets/audio/end_credits.mp3'
   }
 };
 

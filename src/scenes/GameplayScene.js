@@ -11,6 +11,7 @@ import { SandDuneCutscene } from '../cinematics/SandDuneCutscene.js';
 import { audioDirector } from '../audio/AudioDirector.js';
 import { PerformanceProfiler } from '../core/PerformanceProfiler.js';
 import { toast } from '../ui/ToastManager.js';
+import { gameSettings } from '../core/GameSettings.js';
 
 export class GameplayScene {
   /**
@@ -56,9 +57,19 @@ export class GameplayScene {
     this.hudContainer = null;
     this.locationBanner = null;
     this.wavePanel = null;
+    this.waveTitleEl = null;
     this.waveDefeatedEl = null;
     this.waveTotalEl = null;
-    this.waveActiveEl = null;
+
+    // Milestone 7 Presentation State
+    this.isPaused = false;
+    this.isGameCompleted = false;
+    this.pauseOverlay = null;
+    this.pauseSettingsModal = null;
+    this.pauseAudioModal = null;
+
+    this.boundKeyDown = this.handleKeyDown.bind(this);
+    window.addEventListener('keydown', this.boundKeyDown);
 
     this.setupLighting();
     this.initHUD();
@@ -106,9 +117,12 @@ export class GameplayScene {
     this.hudContainer.id = 'gameplay-hud';
     this.hudContainer.className = 'scene-overlay hidden';
 
+    const currentSettings = gameSettings.settings;
+
     this.hudContainer.innerHTML = `
       <div class="hud-top-gradient"></div>
 
+      <!-- Top Bar: Location & Compact Wave Indicator & Pause -->
       <div class="hud-top-bar">
         <div class="hud-location" id="hud-location-banner">
           <div class="location-badge">BATTLEFIELD LOCALE</div>
@@ -116,82 +130,439 @@ export class GameplayScene {
           <div class="location-sanskrit">दण्डकारण्य वन • रणभूमि</div>
         </div>
 
-        <div class="hud-wave-panel" id="hud-wave-panel">
-          <div class="wave-badge">BATTLE ENCOUNTER</div>
-          <div class="wave-title" id="hud-wave-title">WAVE 1 — DANDAKARANYA SCOUTS</div>
-          <div class="wave-stats">
-            <span class="wave-stat-item">Defeated: <strong id="hud-wave-defeated">0</strong> / <span id="hud-wave-total">8</span></span>
-            <span class="wave-stat-separator">•</span>
-            <span class="wave-stat-item">Active Threats: <strong id="hud-wave-active">0</strong></span>
+        <div class="hud-top-right">
+          <!-- Compact Wave Indicator -->
+          <div class="hud-compact-wave" id="hud-wave-panel">
+            <div class="compact-wave-header">
+              <span class="compact-wave-ornament">❖</span>
+              <span class="compact-wave-title" id="hud-wave-title">WAVE 1 — DANDAKARANYA SCOUTS</span>
+            </div>
+            <div class="compact-wave-counter">
+              <span class="compact-counter-label">DEFEATED</span>
+              <strong class="compact-count-val" id="hud-wave-defeated">0</strong>
+              <span class="compact-count-slash">/</span>
+              <span class="compact-count-total" id="hud-wave-total">8</span>
+            </div>
+          </div>
+
+          <!-- Unobtrusive Pause Button -->
+          <button class="hud-pause-btn" id="btn-hud-pause" type="button" title="Pause Game (ESC / P)">
+            <span class="pause-symbol">⏸</span>
+            <span class="pause-key-label">ESC</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Divine Ability HUD Panel -->
+      <div class="hud-divine-compact" id="hud-divine-panel">
+        <div class="divine-energy-row">
+          <span class="divine-label">DIVINE ENERGY</span>
+          <span class="divine-percent" id="hud-energy-val">0%</span>
+        </div>
+        <div class="divine-track">
+          <div class="divine-fill" id="hud-energy-fill" style="width: 0%;"></div>
+        </div>
+        <div class="divine-slots">
+          <!-- Q: Bahu-Baan -->
+          <div class="ability-slot locked" id="ability-bahu-baan" title="Q — Divya Bahu-Baan (50%)">
+            <span class="slot-key">Q</span>
+            <div class="slot-details">
+              <span class="slot-name">BAHU-BAAN</span>
+              <span class="slot-status" id="status-bahu-baan">50%</span>
+            </div>
+          </div>
+          <!-- R: Sand Dune -->
+          <div class="ability-slot locked" id="ability-sand-dune" title="R — Divya Sand Dune (100% - Final Wave)">
+            <span class="slot-key">R</span>
+            <div class="slot-details">
+              <span class="slot-name">SAND DUNE</span>
+              <span class="slot-status" id="status-sand-dune">LOCKED</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="hud-bottom-bar">
-        <button class="menu-btn secondary-btn small-btn" id="btn-gameplay-back">
-          <span class="btn-bracket">⟨</span>
-          <span class="btn-text">RETURN TO MAIN MENU</span>
-          <span class="btn-bracket">⟩</span>
-        </button>
+      <!-- Smooth Fade to Black for Ending Sequence -->
+      <div class="game-fade-black hidden" id="game-fade-black"></div>
+
+      <!-- PAUSE OVERLAY -->
+      <div class="modal-backdrop hidden" id="gameplay-pause-overlay">
+        <div class="modal-card pause-modal-card">
+          <div class="modal-header">
+            <div class="modal-ornament">❖</div>
+            <h2 class="modal-title">GAME PAUSED</h2>
+            <button class="close-modal-btn" id="btn-pause-close" aria-label="Resume">✕</button>
+          </div>
+          <div class="pause-actions-list">
+            <button class="menu-btn primary-btn full-width" id="btn-pause-resume" type="button">
+              <span class="btn-bracket">⟨</span>
+              <span class="btn-text">RESUME</span>
+              <span class="btn-bracket">⟩</span>
+            </button>
+            <button class="menu-btn secondary-btn full-width" id="btn-pause-settings" type="button">
+              <span class="btn-bracket">⟨</span>
+              <span class="btn-text">SETTINGS</span>
+              <span class="btn-bracket">⟩</span>
+            </button>
+            <button class="menu-btn secondary-btn full-width" id="btn-pause-audio" type="button">
+              <span class="btn-bracket">⟨</span>
+              <span class="btn-text">AUDIO</span>
+              <span class="btn-bracket">⟩</span>
+            </button>
+            <button class="menu-btn secondary-btn full-width" id="btn-pause-main-menu" type="button">
+              <span class="btn-bracket">⟨</span>
+              <span class="btn-text">RETURN TO MAIN MENU</span>
+              <span class="btn-bracket">⟩</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <!-- Milestone 6: Minimalist Divine Energy Interface -->
-      <div class="hud-divine-panel" id="hud-divine-panel">
-        <div class="divine-energy-header">
-          <span class="divine-energy-label">DIVINE ENERGY • दिव्य शक्ति</span>
-          <span class="divine-energy-value" id="hud-energy-val">0%</span>
-        </div>
-        <div class="divine-energy-bar-track">
-          <div class="divine-energy-bar-fill" id="hud-energy-fill" style="width: 0%;"></div>
-        </div>
-        <div class="divine-abilities-container">
-          <!-- Ability 1: Divya Bahu-Baan -->
-          <div class="ability-card locked" id="ability-bahu-baan">
-            <div class="ability-key">Q</div>
-            <div class="ability-info">
-              <div class="ability-name">DIVYA BAHU-BAAN</div>
-              <div class="ability-sanskrit">दिव्य बहु-बाण • Arrow Multiplication</div>
-            </div>
-            <div class="ability-cost-badge">50%</div>
-            <div class="ability-status" id="status-bahu-baan">CHARGING</div>
+      <!-- IN-GAME SETTINGS MODAL -->
+      <div class="modal-backdrop hidden" id="pause-settings-modal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div class="modal-ornament">❖</div>
+            <h2 class="modal-title">GAMEPLAY SETTINGS</h2>
+            <button class="close-modal-btn" id="btn-pause-close-settings" aria-label="Close">✕</button>
           </div>
-
-          <!-- Ability 2: Divya Sand Dune -->
-          <div class="ability-card locked" id="ability-sand-dune">
-            <div class="ability-key">R</div>
-            <div class="ability-info">
-              <div class="ability-name">DIVYA SAND DUNE</div>
-              <div class="ability-sanskrit">रेत की लहर • Supernatural Wave</div>
+          <div class="modal-body">
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-mouse-sens" class="setting-label">Mouse Aim Sensitivity</label>
+                <span class="slider-value" id="pause-val-mouse-sens">${currentSettings.mouseSensitivity.toFixed(1)}x</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-mouse-sens" min="0.5" max="2.5" step="0.1" value="${currentSettings.mouseSensitivity}" class="mythic-slider" />
+              </div>
             </div>
-            <div class="ability-cost-badge">100%</div>
-            <div class="ability-status" id="status-sand-dune">LOCKED (WAVE 1)</div>
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-camera-sens" class="setting-label">Camera Orbit Sensitivity</label>
+                <span class="slider-value" id="pause-val-camera-sens">${currentSettings.cameraSensitivity.toFixed(1)}x</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-camera-sens" min="0.5" max="2.5" step="0.1" value="${currentSettings.cameraSensitivity}" class="mythic-slider" />
+              </div>
+            </div>
+            <div class="setting-item setting-toggle-row">
+              <label for="pause-invert-y" class="setting-label">Invert Vertical Look (Pitch)</label>
+              <input type="checkbox" id="pause-invert-y" class="mythic-checkbox" ${currentSettings.invertY ? 'checked' : ''} />
+            </div>
+            <div class="setting-item">
+              <label for="pause-reticle" class="setting-label">Aiming Reticle Contrast</label>
+              <select id="pause-reticle" class="mythic-select">
+                <option value="standard" ${currentSettings.reticleContrast === 'standard' ? 'selected' : ''}>Standard (Subtle Golden Dot)</option>
+                <option value="high_contrast" ${currentSettings.reticleContrast === 'high_contrast' ? 'selected' : ''}>High-Contrast (Enhanced Visibility)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="menu-btn primary-btn small-btn" id="btn-pause-apply-settings">
+              <span class="btn-text">APPLY & CLOSE</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IN-GAME AUDIO MODAL -->
+      <div class="modal-backdrop hidden" id="pause-audio-modal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div class="modal-ornament">♫</div>
+            <h2 class="modal-title">AUDIO SETTINGS</h2>
+            <button class="close-modal-btn" id="btn-pause-close-audio" aria-label="Close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-master-vol" class="setting-label">Master Volume</label>
+                <span class="slider-value" id="pause-val-master-vol">${currentSettings.masterVolume}%</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-master-vol" min="0" max="100" value="${currentSettings.masterVolume}" class="mythic-slider" />
+              </div>
+            </div>
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-music-vol" class="setting-label">Background Music</label>
+                <span class="slider-value" id="pause-val-music-vol">${currentSettings.musicVolume}%</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-music-vol" min="0" max="100" value="${currentSettings.musicVolume}" class="mythic-slider" />
+              </div>
+            </div>
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-sfx-vol" class="setting-label">Sound Effects (SFX)</label>
+                <span class="slider-value" id="pause-val-sfx-vol">${currentSettings.sfxVolume}%</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-sfx-vol" min="0" max="100" value="${currentSettings.sfxVolume}" class="mythic-slider" />
+              </div>
+            </div>
+            <div class="setting-item">
+              <div class="setting-label-row">
+                <label for="pause-cinematic-vol" class="setting-label">Cinematic Audio</label>
+                <span class="slider-value" id="pause-val-cinematic-vol">${currentSettings.cinematicVolume}%</span>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="pause-cinematic-vol" min="0" max="100" value="${currentSettings.cinematicVolume}" class="mythic-slider" />
+              </div>
+            </div>
+            <div class="setting-item setting-toggle-row">
+              <label for="pause-mute-all" class="setting-label">Mute All Audio</label>
+              <input type="checkbox" id="pause-mute-all" class="mythic-checkbox" ${currentSettings.isMuted ? 'checked' : ''} />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="menu-btn primary-btn small-btn" id="btn-pause-apply-audio">
+              <span class="btn-text">APPLY & CLOSE</span>
+            </button>
           </div>
         </div>
       </div>
     `;
 
     document.body.appendChild(this.hudContainer);
+
     this.locationBanner = this.hudContainer.querySelector('#hud-location-banner');
     this.wavePanel = this.hudContainer.querySelector('#hud-wave-panel');
     this.waveTitleEl = this.hudContainer.querySelector('#hud-wave-title');
     this.waveDefeatedEl = this.hudContainer.querySelector('#hud-wave-defeated');
     this.waveTotalEl = this.hudContainer.querySelector('#hud-wave-total');
-    this.waveActiveEl = this.hudContainer.querySelector('#hud-wave-active');
 
-    // Divine Ability HUD Elements
+    // Divine Ability Elements
     this.energyValEl = this.hudContainer.querySelector('#hud-energy-val');
     this.energyFillEl = this.hudContainer.querySelector('#hud-energy-fill');
-    this.bahuBaanCard = this.hudContainer.querySelector('#ability-bahu-baan');
+    this.bahuBaanSlot = this.hudContainer.querySelector('#ability-bahu-baan');
     this.bahuBaanStatus = this.hudContainer.querySelector('#status-bahu-baan');
-    this.sandDuneCard = this.hudContainer.querySelector('#ability-sand-dune');
+    this.sandDuneSlot = this.hudContainer.querySelector('#ability-sand-dune');
     this.sandDuneStatus = this.hudContainer.querySelector('#status-sand-dune');
 
-    const backBtn = this.hudContainer.querySelector('#btn-gameplay-back');
-    backBtn.addEventListener('click', () => {
-      if (this.sceneManager) {
-        this.sceneManager.switchScene('mainMenu');
-      }
+    // Modals
+    this.pauseOverlay = this.hudContainer.querySelector('#gameplay-pause-overlay');
+    this.pauseSettingsModal = this.hudContainer.querySelector('#pause-settings-modal');
+    this.pauseAudioModal = this.hudContainer.querySelector('#pause-audio-modal');
+    this.fadeOverlay = this.hudContainer.querySelector('#game-fade-black');
+
+    this.bindHUDEvents();
+  }
+
+  bindHUDEvents() {
+    // Pause button
+    const pauseBtn = this.hudContainer.querySelector('#btn-hud-pause');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => this.togglePause());
+    }
+
+    // Pause menu buttons
+    const resumeBtn = this.hudContainer.querySelector('#btn-pause-resume');
+    const pauseCloseBtn = this.hudContainer.querySelector('#btn-pause-close');
+    const settingsBtn = this.hudContainer.querySelector('#btn-pause-settings');
+    const audioBtn = this.hudContainer.querySelector('#btn-pause-audio');
+    const mainMenuBtn = this.hudContainer.querySelector('#btn-pause-main-menu');
+
+    if (resumeBtn) resumeBtn.addEventListener('click', () => this.setPaused(false));
+    if (pauseCloseBtn) pauseCloseBtn.addEventListener('click', () => this.setPaused(false));
+
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        this.pauseSettingsModal.classList.remove('hidden');
+        this.pauseSettingsModal.classList.add('active');
+      });
+    }
+
+    if (audioBtn) {
+      audioBtn.addEventListener('click', () => {
+        this.pauseAudioModal.classList.remove('hidden');
+        this.pauseAudioModal.classList.add('active');
+      });
+    }
+
+    if (mainMenuBtn) {
+      mainMenuBtn.addEventListener('click', () => {
+        this.setPaused(false);
+        if (this.sceneManager) {
+          this.sceneManager.switchScene('mainMenu');
+        }
+      });
+    }
+
+    // Settings sub-modal close
+    const closeSettings = () => {
+      this.pauseSettingsModal.classList.remove('active');
+      this.pauseSettingsModal.classList.add('hidden');
+    };
+    this.hudContainer.querySelector('#btn-pause-close-settings')?.addEventListener('click', closeSettings);
+    this.hudContainer.querySelector('#btn-pause-apply-settings')?.addEventListener('click', closeSettings);
+
+    // Audio sub-modal close
+    const closeAudio = () => {
+      this.pauseAudioModal.classList.remove('active');
+      this.pauseAudioModal.classList.add('hidden');
+    };
+    this.hudContainer.querySelector('#btn-pause-close-audio')?.addEventListener('click', closeAudio);
+    this.hudContainer.querySelector('#btn-pause-apply-audio')?.addEventListener('click', closeAudio);
+
+    // In-game Settings Sliders
+    const mouseSensInput = this.hudContainer.querySelector('#pause-mouse-sens');
+    const mouseSensVal = this.hudContainer.querySelector('#pause-val-mouse-sens');
+    mouseSensInput?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      mouseSensVal.textContent = `${val.toFixed(1)}x`;
+      gameSettings.set('mouseSensitivity', val);
+      if (this.playerController) gameSettings.applyToPlayer(this.playerController);
     });
+
+    const camSensInput = this.hudContainer.querySelector('#pause-camera-sens');
+    const camSensVal = this.hudContainer.querySelector('#pause-val-camera-sens');
+    camSensInput?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      camSensVal.textContent = `${val.toFixed(1)}x`;
+      gameSettings.set('cameraSensitivity', val);
+      if (this.playerController) gameSettings.applyToPlayer(this.playerController);
+    });
+
+    const invertYInput = this.hudContainer.querySelector('#pause-invert-y');
+    invertYInput?.addEventListener('change', (e) => {
+      gameSettings.set('invertY', e.target.checked);
+      if (this.playerController) gameSettings.applyToPlayer(this.playerController);
+    });
+
+    const reticleSelect = this.hudContainer.querySelector('#pause-reticle');
+    reticleSelect?.addEventListener('change', (e) => {
+      gameSettings.set('reticleContrast', e.target.value);
+    });
+
+    // In-game Audio Sliders
+    const masterSlider = this.hudContainer.querySelector('#pause-master-vol');
+    const masterVal = this.hudContainer.querySelector('#pause-val-master-vol');
+    masterSlider?.addEventListener('input', (e) => {
+      const pct = Number(e.target.value);
+      masterVal.textContent = `${pct}%`;
+      gameSettings.set('masterVolume', pct);
+    });
+
+    const musicSlider = this.hudContainer.querySelector('#pause-music-vol');
+    const musicVal = this.hudContainer.querySelector('#pause-val-music-vol');
+    musicSlider?.addEventListener('input', (e) => {
+      const pct = Number(e.target.value);
+      musicVal.textContent = `${pct}%`;
+      gameSettings.set('musicVolume', pct);
+    });
+
+    const sfxSlider = this.hudContainer.querySelector('#pause-sfx-vol');
+    const sfxVal = this.hudContainer.querySelector('#pause-val-sfx-vol');
+    sfxSlider?.addEventListener('input', (e) => {
+      const pct = Number(e.target.value);
+      sfxVal.textContent = `${pct}%`;
+      gameSettings.set('sfxVolume', pct);
+    });
+
+    const cineSlider = this.hudContainer.querySelector('#pause-cinematic-vol');
+    const cineVal = this.hudContainer.querySelector('#pause-val-cinematic-vol');
+    cineSlider?.addEventListener('input', (e) => {
+      const pct = Number(e.target.value);
+      cineVal.textContent = `${pct}%`;
+      gameSettings.set('cinematicVolume', pct);
+    });
+
+    const muteInput = this.hudContainer.querySelector('#pause-mute-all');
+    muteInput?.addEventListener('change', (e) => {
+      gameSettings.set('isMuted', e.target.checked);
+    });
+  }
+
+  handleKeyDown(e) {
+    if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (this.hudContainer && this.hudContainer.classList.contains('active') && !this.isGameCompleted) {
+        this.togglePause();
+      }
+    }
+  }
+
+  togglePause() {
+    if (this.isGameCompleted) return;
+    this.setPaused(!this.isPaused);
+  }
+
+  setPaused(paused) {
+    this.isPaused = !!paused;
+    if (this.playerController) {
+      this.playerController.isPaused = this.isPaused;
+    }
+
+    if (this.pauseOverlay) {
+      if (this.isPaused) {
+        this.pauseOverlay.classList.remove('hidden');
+        this.pauseOverlay.classList.add('active');
+        if (document.exitPointerLock) {
+          document.exitPointerLock();
+        }
+      } else {
+        this.pauseOverlay.classList.remove('active');
+        this.pauseOverlay.classList.add('hidden');
+        this.closePauseSubModals();
+      }
+    }
+  }
+
+  closePauseSubModals() {
+    if (this.pauseSettingsModal) {
+      this.pauseSettingsModal.classList.remove('active');
+      this.pauseSettingsModal.classList.add('hidden');
+    }
+    if (this.pauseAudioModal) {
+      this.pauseAudioModal.classList.remove('active');
+      this.pauseAudioModal.classList.add('hidden');
+    }
+  }
+
+  checkGameCompletion() {
+    if (this.isGameCompleted) return;
+
+    const waveMgr = this.enemyWaveManager;
+    if (!waveMgr) return;
+
+    // Conclude encounter once Wave 2 is defeated and abilities/cutscenes have resolved
+    if (waveMgr.config.waveNumber === 2 && waveMgr.isWaveComplete) {
+      if (this.sandDuneCutscene && this.sandDuneCutscene.isPlaying) {
+        return; // wait for cinematic ultimate to finish naturally
+      }
+      this.triggerEndingSequence();
+    }
+  }
+
+  async triggerEndingSequence() {
+    if (this.isGameCompleted) return;
+    this.isGameCompleted = true;
+
+    console.log('[GameplayScene] Concluding battle encounter: Wave 2 resolved. Initiating ending transition...');
+
+    if (this.playerController) {
+      this.playerController.setMovementEnabled(false);
+      this.playerController.isPaused = true;
+      if (document.exitPointerLock) {
+        document.exitPointerLock();
+      }
+    }
+
+    // Fade to black
+    const fadeOverlay = this.hudContainer.querySelector('#game-fade-black');
+    if (fadeOverlay) {
+      fadeOverlay.classList.remove('hidden');
+      void fadeOverlay.offsetWidth; // force reflow
+      fadeOverlay.classList.add('visible');
+    }
+
+    audioDirector.stopSandDuneUltimate({ duration: 1.0 });
+
+    await new Promise((r) => setTimeout(r, 1600));
+
+    if (this.sceneManager) {
+      await this.sceneManager.switchScene('credits');
+    }
   }
 
   updateWaveUI(progress) {
@@ -202,7 +573,6 @@ export class GameplayScene {
     }
     if (this.waveDefeatedEl) this.waveDefeatedEl.textContent = progress.defeated;
     if (this.waveTotalEl) this.waveTotalEl.textContent = progress.total;
-    if (this.waveActiveEl) this.waveActiveEl.textContent = progress.active;
   }
 
   updateDivineHUD(state) {
@@ -218,40 +588,59 @@ export class GameplayScene {
       }
     }
 
-    // Bahu-Baan Card (Q)
-    if (this.bahuBaanCard && this.bahuBaanStatus) {
+    // Bahu-Baan Slot (Q)
+    if (this.bahuBaanSlot && this.bahuBaanStatus) {
       if (state.bahuBaanReady) {
-        this.bahuBaanCard.classList.remove('locked');
-        this.bahuBaanCard.classList.add('ready');
+        this.bahuBaanSlot.classList.remove('locked');
+        this.bahuBaanSlot.classList.add('ready');
         this.bahuBaanStatus.textContent = 'READY';
       } else {
-        this.bahuBaanCard.classList.remove('ready');
-        this.bahuBaanCard.classList.add('locked');
-        this.bahuBaanStatus.textContent = 'CHARGING';
+        this.bahuBaanSlot.classList.remove('ready');
+        this.bahuBaanSlot.classList.add('locked');
+        this.bahuBaanStatus.textContent = '50%';
       }
     }
 
-    // Sand Dune Card (R)
-    if (this.sandDuneCard && this.sandDuneStatus) {
+    // Sand Dune Slot (R)
+    if (this.sandDuneSlot && this.sandDuneStatus) {
       if (state.sandDuneLocked) {
-        this.sandDuneCard.classList.remove('ready', 'charging');
-        this.sandDuneCard.classList.add('locked');
+        this.sandDuneSlot.classList.remove('ready', 'charging');
+        this.sandDuneSlot.classList.add('locked');
         this.sandDuneStatus.textContent = 'LOCKED (WAVE 1)';
       } else if (state.sandDuneReady) {
-        this.sandDuneCard.classList.remove('locked', 'charging');
-        this.sandDuneCard.classList.add('ready');
+        this.sandDuneSlot.classList.remove('locked', 'charging');
+        this.sandDuneSlot.classList.add('ready');
         this.sandDuneStatus.textContent = 'READY';
       } else {
-        this.sandDuneCard.classList.remove('ready');
-        this.sandDuneCard.classList.add('locked', 'charging');
-        this.sandDuneStatus.textContent = `CHARGING (${Math.round(state.energy)}%)`;
+        this.sandDuneSlot.classList.remove('ready');
+        this.sandDuneSlot.classList.add('locked', 'charging');
+        this.sandDuneStatus.textContent = `${Math.round(state.energy)}%`;
       }
     }
   }
 
-  async enter() {
+  async enter(params = {}) {
     this.hudContainer.classList.remove('hidden');
     this.hudContainer.classList.add('active');
+
+    this.isPaused = false;
+    this.isGameCompleted = false;
+
+    // Reset black fade overlay
+    const fadeOverlay = this.hudContainer.querySelector('#game-fade-black');
+    if (fadeOverlay) {
+      fadeOverlay.classList.remove('visible');
+      fadeOverlay.classList.add('hidden');
+    }
+
+    this.setPaused(false);
+
+    // Apply settings
+    gameSettings.applyToRenderer(this.sceneManager?.renderer);
+    if (this.playerController) {
+      gameSettings.applyToPlayer(this.playerController);
+      this.playerController.isPaused = false;
+    }
 
     // Initialize WebAssembly Rapier3D physics engine
     if (!this.physics.isInitialized) {
@@ -296,14 +685,26 @@ export class GameplayScene {
 
     // Start battle wave encounter
     if (this.enemyWaveManager) {
+      if (params.isRestart) {
+        this.enemyWaveManager.config.waveNumber = 1;
+        this.enemyWaveManager.config.totalEnemies = 8;
+      }
       this.enemyWaveManager.startWave();
     }
     if (this.divineAbilitySystem) {
+      if (params.isRestart) {
+        this.divineAbilitySystem.energy = 0;
+        this.divineAbilitySystem.setFinalWave(false);
+      }
       this.divineAbilitySystem.notifyState();
     }
 
-    // Trigger brief, elegant controls toast notification (auto-dismissed in 5.5s)
-    toast.show('WASD — Move  •  SHIFT — Run  •  Hold RMB — Aim  •  LMB — Shoot  •  E — Equip/Stow', 5500);
+    if (params.isRestart) {
+      toast.show('⚔ BATTLE RESTARTED: Dandakaranya Clearing', 3500);
+    } else {
+      // Trigger brief, elegant controls toast notification (auto-dismissed in 5.5s)
+      toast.show('WASD — Move  •  SHIFT — Run  •  Hold RMB — Aim  •  LMB — Shoot  •  E — Equip/Stow', 5500);
+    }
 
     // Animate location banner: visible on entry, gently fades out after 5.5s
     if (this.locationBanner) {
@@ -610,6 +1011,10 @@ export class GameplayScene {
   }
 
   update(delta, elapsed) {
+    if (this.isPaused) {
+      return;
+    }
+
     const frameStart = performance.now();
     const jsStart = performance.now();
 
@@ -652,7 +1057,10 @@ export class GameplayScene {
       this.sandDuneCutscene.update(delta);
     }
 
-    // 5. Record profiler metrics (active only when F2 or ?debug=1 is enabled)
+    // 5. Check if Wave 2 and abilities have concluded -> trigger ending transition
+    this.checkGameCompletion();
+
+    // 6. Record profiler metrics (active only when F2 or ?debug=1 is enabled)
     if (this.profiler && this.profiler.isEnabled) {
       this.profiler.recordFrame(performance.now() - frameStart, jsDur, eDur, pDur, 0);
     }
@@ -664,6 +1072,7 @@ export class GameplayScene {
   }
 
   async exit() {
+    this.setPaused(false);
     this.hudContainer.classList.remove('active');
     this.hudContainer.classList.add('hidden');
 
@@ -680,6 +1089,7 @@ export class GameplayScene {
   }
 
   dispose() {
+    window.removeEventListener('keydown', this.boundKeyDown);
     if (this.playerController) {
       this.playerController.dispose();
       this.playerController = null;
