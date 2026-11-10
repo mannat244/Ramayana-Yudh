@@ -7,9 +7,11 @@ import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { LoadingScene } from './scenes/LoadingScene.js';
 import { GameplayScene } from './scenes/GameplayScene.js';
 import { CreditsScene } from './scenes/CreditsScene.js';
+import { pwaManager } from './pwa/PWAManager.js';
 
-// Expose THREE globally for dev tools and test suites
+// Expose THREE and PWA Manager globally for dev tools and test suites
 window.THREE = THREE;
+window.__pwaManager = pwaManager;
 
 async function bootstrap() {
   console.log('%c⚔ RAMAYANA YUDH — Technical Foundation Initializing...', 'color: #ffd54f; font-weight: bold; font-size: 14px;');
@@ -38,6 +40,9 @@ async function bootstrap() {
 
   // Enter initial Main Menu scene
   await sceneManager.switchScene('mainMenu');
+
+  // Register Progressive Web App Service Worker for Chrome installability
+  pwaManager.registerServiceWorker();
 
   console.log('%c✓ Main Menu successfully initialized & rendering.', 'color: #2ed573; font-weight: bold;');
 }

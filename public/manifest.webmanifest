@@ -1,0 +1,65 @@
+{
+  "id": "ramayana-yudh-pwa",
+  "name": "Ramayana Yudh: The Divine Archer",
+  "short_name": "Ramayana Yudh",
+  "description": "A 3D mythological action game inspired by the Ramayana, featuring third-person archery combat, divine abilities, and cinematic Pine Forest battles.",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "landscape",
+  "background_color": "#0a0c18",
+  "theme_color": "#0a0c18",
+  "categories": [
+    "games",
+    "action",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./screenshots/main_menu.png",
+      "sizes": "1262x624",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Cinematic Main Menu with Shri Ram"
+    },
+    {
+      "src": "./screenshots/gameplay.png",
+      "sizes": "1262x624",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Pine Forest Third-Person Archery Gameplay"
+    }
+  ]
+}
+

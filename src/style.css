@@ -210,6 +210,31 @@ html, body {
   font-size: 0.9rem;
 }
 
+/* PWA Install Button Enhancement */
+.install-btn {
+  border-color: rgba(255, 215, 0, 0.75);
+  background: linear-gradient(135deg, rgba(30, 24, 48, 0.9) 0%, rgba(18, 14, 28, 0.95) 100%);
+  animation: pwa-pulse-glow 3s infinite alternate ease-in-out;
+}
+
+.install-btn:hover {
+  border-color: #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+@keyframes pwa-pulse-glow {
+  0% {
+    box-shadow: 0 0 4px rgba(212, 175, 55, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.45);
+  }
+}
+
+.mt-2 {
+  margin-top: 0.8rem;
+}
+
 /* Footer & Status */
 .menu-footer {
   font-size: 0.8rem;

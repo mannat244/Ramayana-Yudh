@@ -975,3 +975,61 @@ In strict compliance with the **Absolute Gameplay Protection Rule**, all underly
   - `tests/m7_1_09_portrait_warning_prompt.png`: Rotate Device Prompt when in Portrait Mode.
   - `tests/m7_1_10_landscape_restored.png`: Restored Landscape Mode with Mobile Controls.
 
+---
+
+## Milestone 7.2: Progressive Web App (PWA) & Chrome Installability — [COMPLETED]
+
+### Objective
+Transform Ramayana Yudh into an installable Progressive Web App (PWA) enabling Google Chrome (Desktop & Android), Microsoft Edge, and iOS Safari users to install and launch the game directly from the browser as a standalone application.
+
+### Key Implementations
+
+1. **Web App Manifest (`public/manifest.webmanifest` & `public/manifest.json`):**
+   - App identity: Name `"Ramayana Yudh: The Divine Archer"`, Short Name `"Ramayana Yudh"`.
+   - Entry & Scope: `start_url: "./index.html?source=pwa"`, `scope: "./"`.
+   - Display modes: `display: "standalone"`, `display_override: ["fullscreen", "standalone", "minimal-ui"]`.
+   - Orientation: Fixed to `landscape` for optimal 3D archery combat.
+   - Theme & Styling: `theme_color: "#0a0c18"`, `background_color: "#0a0c18"`.
+   - Icons:
+     - Standard 192×192 PNG (`/icons/icon-192.png`).
+     - Standard 512×512 PNG (`/icons/icon-512.png`).
+     - Maskable 192×192 PNG (`/icons/icon-maskable-192.png`) with 22% safe-zone padding.
+     - Maskable 512×512 PNG (`/icons/icon-maskable-512.png`) with 22% safe-zone padding.
+   - Screenshots: Rich landscape screenshots (`/screenshots/main_menu.png`, `/screenshots/gameplay.png`) for Chrome's desktop and mobile app install dialogs.
+
+2. **Progressive Web App Service Worker (`public/sw.js`):**
+   - Lifecycle: `install`, `activate`, and `fetch` event listeners.
+   - Critical precaching: Shell HTML, manifest, and icons precached upon installation.
+   - Cache cleanup: Stale cache eviction on activation (`caches.delete`).
+   - Caching strategy: Stale-While-Revalidate / Network-First with offline fallback to `./index.html`.
+   - Media & Range Safety: Automatically passes through HTTP Range requests and bypasses caching for large 3D glTF binaries (`.glb`) to prevent quota exhaustion and avoid streaming interference.
+
+3. **HTML PWA Metadata Directives (`index.html`):**
+   - Manifest link: `<link rel="manifest" href="./manifest.webmanifest" />`.
+   - Theme and color scheme: `<meta name="theme-color" content="#0a0c18" />` and `<meta name="color-scheme" content="dark" />`.
+   - Chrome / Android PWA directives: `<meta name="mobile-web-app-capable" content="yes" />` and `<meta name="application-name" content="Ramayana Yudh" />`.
+   - iOS Safari directives: `<meta name="apple-mobile-web-app-capable" content="yes" />`, `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />`, and apple touch icons.
+
+4. **PWA Manager (`src/pwa/PWAManager.js`):**
+   - Automated Service Worker registration on startup.
+   - Captures Chrome's `beforeinstallprompt` event without blocking native address-bar (Omnibox) install prompts.
+   - Exposes `promptInstall()` for in-game install triggers.
+   - Detects standalone display mode (`display-mode: standalone` and iOS `navigator.standalone`).
+   - Subscribable state change observer notifying UI components.
+
+5. **In-Game Main Menu Install UI (`src/ui/MainMenuUI.js`):**
+   - Main navigation: Dynamic `⤓ INSTALL APP` button (`#btn-install-app`) with golden pulse styling.
+   - About modal: Dedicated PWA section with one-click install button (`#btn-modal-install-app`).
+   - Auto-hides install triggers when running in standalone mode or after successful installation.
+
+### Verification Results
+- **PWA Verification Suite (`tests/test_pwa_installability.mjs`):**
+  - **16/16 tests passed (100%)**: Validated manifest syntax, icons, dimensions, service worker event handlers, HTML metadata, and `PWAManager` lifecycle.
+- **Chrome E2E Browser Test (`tests/test_pwa_e2e.mjs`):**
+  - Manifest successfully retrieved over HTTP.
+  - Service Worker registered and active (`scope: http://127.0.0.1:.../`).
+  - `beforeinstallprompt` simulated and verified: dynamic install button activated in Main Menu.
+  - Screenshot captured: `tests/pwa_01_install_menu.png`.
+- **Production Build:**
+  - `npm run build` completed in 4.35s with 0 errors; all PWA assets bundled into `dist/`.
+

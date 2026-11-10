@@ -1,5 +1,6 @@
 import { ASSET_PATHS } from '../assets/assetManifest.js';
 import { gameSettings } from '../core/GameSettings.js';
+import { pwaManager } from '../pwa/PWAManager.js';
 
 export class MainMenuUI {
   /**
@@ -66,6 +67,12 @@ export class MainMenuUI {
           <button class="menu-btn secondary-btn" id="btn-open-about" type="button">
             <span class="btn-bracket">⟨</span>
             <span class="btn-text">ABOUT</span>
+            <span class="btn-bracket">⟩</span>
+          </button>
+
+          <button class="menu-btn secondary-btn install-btn hidden" id="btn-install-app" type="button" title="Install to Chrome / Desktop">
+            <span class="btn-bracket">⟨</span>
+            <span class="btn-text">⤓ INSTALL APP</span>
             <span class="btn-bracket">⟩</span>
           </button>
         </nav>
@@ -251,6 +258,16 @@ export class MainMenuUI {
               native <strong>JavaScript (ES Modules)</strong>, and <strong>Vite</strong>.
             </p>
 
+            <div class="about-section-title">PROGRESSIVE WEB APP (CHROME INSTALLABLE)</div>
+            <p class="about-text" id="pwa-about-status">
+              Ramayana Yudh is built as an installable Progressive Web App (PWA). You can install it directly to Google Chrome, Edge, or Android to run as a standalone, fullscreen game with offline support.
+            </p>
+            <div id="pwa-install-action-wrapper" class="hidden">
+              <button class="menu-btn primary-btn small-btn mt-2" id="btn-modal-install-app" type="button">
+                <span class="btn-text">⤓ INSTALL APP TO CHROME</span>
+              </button>
+            </div>
+
             <div class="about-section-title">LEGAL NOTICE & ATTRIBUTION</div>
             <p class="about-text disclaimer-text">
               This is a strictly non-commercial tribute project. It is not affiliated with, sponsored by, or endorsed by
@@ -310,6 +327,44 @@ export class MainMenuUI {
 
     this.container.querySelector('#btn-close-about').addEventListener('click', () => this.closeModal(this.aboutModal));
     this.container.querySelector('#btn-return-about').addEventListener('click', () => this.closeModal(this.aboutModal));
+
+    // PWA Install Triggers & State Sync
+    const installNavBtn = this.container.querySelector('#btn-install-app');
+    const modalInstallWrapper = this.container.querySelector('#pwa-install-action-wrapper');
+    const modalInstallBtn = this.container.querySelector('#btn-modal-install-app');
+    const pwaAboutStatus = this.container.querySelector('#pwa-about-status');
+
+    const handleInstallClick = async () => {
+      const result = await pwaManager.promptInstall();
+      if (result.accepted) {
+        if (installNavBtn) installNavBtn.classList.add('hidden');
+        if (modalInstallWrapper) modalInstallWrapper.classList.add('hidden');
+      }
+    };
+
+    if (installNavBtn) {
+      installNavBtn.addEventListener('click', handleInstallClick);
+    }
+    if (modalInstallBtn) {
+      modalInstallBtn.addEventListener('click', handleInstallClick);
+    }
+
+    // Subscribe to PWA installability updates
+    pwaManager.onStateChange(({ canInstall, isInstalled }) => {
+      if (isInstalled) {
+        if (installNavBtn) installNavBtn.classList.add('hidden');
+        if (modalInstallWrapper) modalInstallWrapper.classList.add('hidden');
+        if (pwaAboutStatus) {
+          pwaAboutStatus.innerHTML = '✓ <strong>Application Installed</strong>. Currently running as a standalone Progressive Web App.';
+        }
+      } else if (canInstall) {
+        if (installNavBtn) installNavBtn.classList.remove('hidden');
+        if (modalInstallWrapper) modalInstallWrapper.classList.remove('hidden');
+      } else {
+        if (installNavBtn) installNavBtn.classList.add('hidden');
+        if (modalInstallWrapper) modalInstallWrapper.classList.add('hidden');
+      }
+    });
 
     // Backdrop click-to-close
     [this.settingsModal, this.audioModal, this.aboutModal].forEach((modal) => {
