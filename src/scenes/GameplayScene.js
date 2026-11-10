@@ -12,6 +12,8 @@ import { audioDirector } from '../audio/AudioDirector.js';
 import { PerformanceProfiler } from '../core/PerformanceProfiler.js';
 import { toast } from '../ui/ToastManager.js';
 import { gameSettings } from '../core/GameSettings.js';
+import { MobileInputController } from '../input/MobileInputController.js';
+import { DeviceDetector } from '../utils/DeviceDetector.js';
 
 export class GameplayScene {
   /**
@@ -67,6 +69,7 @@ export class GameplayScene {
     this.pauseOverlay = null;
     this.pauseSettingsModal = null;
     this.pauseAudioModal = null;
+    this.mobileInputController = null;
 
     this.boundKeyDown = this.handleKeyDown.bind(this);
     window.addEventListener('keydown', this.boundKeyDown);
@@ -346,6 +349,14 @@ export class GameplayScene {
     this.pauseAudioModal = this.hudContainer.querySelector('#pause-audio-modal');
     this.fadeOverlay = this.hudContainer.querySelector('#game-fade-black');
 
+    // Milestone 7.1 — Mobile Touch Controls Adapter
+    this.mobileInputController = new MobileInputController(
+      this.hudContainer,
+      this.playerController,
+      this.divineAbilitySystem,
+      this
+    );
+
     this.bindHUDEvents();
   }
 
@@ -617,11 +628,25 @@ export class GameplayScene {
         this.sandDuneStatus.textContent = `${Math.round(state.energy)}%`;
       }
     }
+
+    if (this.mobileInputController) {
+      this.mobileInputController.updateDivineHUD(state);
+    }
   }
 
   async enter(params = {}) {
     this.hudContainer.classList.remove('hidden');
     this.hudContainer.classList.add('active');
+
+    if (this.mobileInputController) {
+      if (DeviceDetector.shouldShowMobileControls()) {
+        this.hudContainer.classList.add('touch-hud-mode');
+        this.mobileInputController.show();
+      } else {
+        this.hudContainer.classList.remove('touch-hud-mode');
+        this.mobileInputController.hide();
+      }
+    }
 
     this.isPaused = false;
     this.isGameCompleted = false;
@@ -932,6 +957,9 @@ export class GameplayScene {
 
           this.playerController.setWeaponManager(this.weaponManager);
           this.playerController.setEnvironmentReferences(this.environmentModel, this.skyDomeMesh);
+          if (this.mobileInputController) {
+            this.mobileInputController.setPlayerController(this.playerController);
+          }
 
           // Initialize Supernatural Sand Dune Ultimate VFX System
           this.sandDuneSystem = new SandDuneSystem(this.threeScene, this.physics);
@@ -995,6 +1023,9 @@ export class GameplayScene {
             this.divineAbilitySystem.onStateChange = (state) => {
               this.updateDivineHUD(state);
             };
+            if (this.mobileInputController) {
+              this.mobileInputController.setAbilitySystem(this.divineAbilitySystem);
+            }
             this.divineAbilitySystem.notifyState();
 
             console.log('[GameplayScene] Aasura master asset optimized & Divine Abilities initialized.');
@@ -1086,10 +1117,24 @@ export class GameplayScene {
         document.exitPointerLock();
       }
     }
+
+    if (this.hudContainer) {
+      this.hudContainer.classList.remove('touch-hud-mode');
+    }
+
+    if (this.mobileInputController) {
+      this.mobileInputController.hide();
+    }
   }
 
   dispose() {
     window.removeEventListener('keydown', this.boundKeyDown);
+
+    if (this.mobileInputController) {
+      this.mobileInputController.dispose();
+      this.mobileInputController = null;
+    }
+
     if (this.playerController) {
       this.playerController.dispose();
       this.playerController = null;

@@ -1459,6 +1459,581 @@ html, body {
   }
 }
 
+/* ==============================================================
+   BONUS MILESTONE 7.1: MOBILE CONTROLS & RESPONSIVE TOUCH HUD
+   ============================================================== */
+
+/* Root Mobile Controls Layer */
+.mobile-controls-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 85;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.mobile-controls-root.hidden {
+  display: none !important;
+}
+
+/* Base button defaults for mobile touch */
+.mobile-touch-btn {
+  background: rgba(12, 16, 28, 0.82);
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  color: #fff9e6;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.mobile-touch-btn:active,
+.mobile-touch-btn.active {
+  transform: scale(0.92);
+}
+
+/* 1. Virtual Movement Joystick */
+.mobile-joystick-zone {
+  position: absolute;
+  bottom: max(22px, env(safe-area-inset-bottom, 22px));
+  left: max(24px, env(safe-area-inset-left, 24px));
+  width: 140px;
+  height: 140px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.mobile-joystick-base {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 22, 38, 0.72) 0%, rgba(6, 10, 18, 0.88) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(212, 175, 55, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  touch-action: none;
+}
+
+.joystick-ring {
+  position: absolute;
+  width: 66%;
+  height: 66%;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0.28);
+  pointer-events: none;
+}
+
+.mobile-joystick-knob {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe082 0%, #d4af37 60%, #8c6d1f 100%);
+  border: 2px solid #fff3c4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 215, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.knob-core {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.85;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+/* 2. Right-Side Camera Look Surface */
+.mobile-camera-surface {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 54vw;
+  height: 100vh;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  z-index: 1;
+}
+
+/* Mutual Exclusivity: Hide desktop panels on mobile/touch layout */
+#gameplay-hud.touch-hud-mode #hud-location-banner,
+#gameplay-hud.touch-hud-mode #hud-divine-panel,
+#gameplay-hud.touch-hud-mode #btn-hud-pause {
+  display: none !important;
+}
+
+#gameplay-hud.touch-hud-mode .hud-top-right {
+  margin-right: 52px; /* space for mobile pause button */
+}
+
+/* Hide mobile controls on desktop fine pointer */
+@media (pointer: fine) and (not (pointer: coarse)) {
+  .mobile-controls-root:not(.force-mobile) {
+    display: none !important;
+  }
+}
+
+/* 2. Top-Left Mobile Divine Energy Meter */
+.mobile-energy-meter {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  left: max(18px, env(safe-area-inset-left, 18px));
+  width: 175px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.mobile-energy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-energy-title {
+  font-family: var(--font-mythic-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  color: var(--color-gold);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.mobile-energy-pct {
+  font-family: var(--font-mythic-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-gold-bright);
+}
+
+.mobile-energy-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(6, 10, 18, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.mobile-energy-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b8860b 0%, #ffd700 50%, #fff8db 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.mobile-energy-fill.full-glow {
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.95);
+  animation: pulseEnergyGlow 1.4s infinite alternate;
+}
+
+@keyframes pulseEnergyGlow {
+  0% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.6); }
+  100% { box-shadow: 0 0 16px rgba(255, 230, 80, 1); }
+}
+
+/* 3. Action Cluster (Right Side) */
+.mobile-action-cluster {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom, 18px));
+  right: max(20px, env(safe-area-inset-right, 20px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: auto;
+  z-index: 5;
+}
+
+/* Single DIVINE Button & Ability Selector Popup */
+.mobile-divine-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.mobile-divine-btn {
+  width: 48px;
+  height: 48px;
+  background: rgba(14, 18, 32, 0.88);
+  border: 1.5px solid rgba(212, 175, 55, 0.5);
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mobile-divine-btn .divine-btn-glyph {
+  font-size: 1.15rem;
+  color: var(--color-gold);
+}
+
+.mobile-divine-btn .divine-btn-text {
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #f5eed8;
+}
+
+.mobile-divine-btn.ready {
+  border-color: var(--color-gold-bright);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.35) 0%, rgba(30, 22, 6, 0.95) 100%);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+}
+
+.mobile-divine-btn.ready .divine-btn-glyph {
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+.mobile-divine-selector {
+  position: absolute;
+  bottom: 56px;
+  right: 0;
+  width: 200px;
+  background: rgba(8, 12, 22, 0.96);
+  border: 1.5px solid var(--color-gold);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(212, 175, 55, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 25;
+}
+
+.mobile-divine-selector.hidden {
+  display: none !important;
+}
+
+.selector-header {
+  font-family: var(--font-mythic-body);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--color-gold-bright);
+  font-weight: 700;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  padding-bottom: 4px;
+  text-align: center;
+}
+
+.ability-select-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.ability-select-opt .opt-glyph {
+  font-size: 1rem;
+  color: var(--color-gold);
+}
+
+.ability-select-opt .opt-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.ability-select-opt .opt-name {
+  font-family: var(--font-mythic-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: #fff8e6;
+}
+
+.ability-select-opt .opt-cost {
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: #bab29c;
+}
+
+.ability-select-opt .opt-status {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #bab29c;
+}
+
+.ability-select-opt.ready {
+  border-color: var(--color-gold-bright);
+  background: rgba(212, 175, 55, 0.22);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.ability-select-opt.ready .opt-status {
+  background: var(--color-gold);
+  color: #0c101c;
+}
+
+.ability-select-opt.locked {
+  opacity: 0.6;
+}
+
+/* Utility Row: Run & Weapon Bow Toggle */
+.mobile-utility-row {
+  display: flex;
+  gap: 12px;
+}
+
+.mobile-secondary-btn {
+  width: 46px;
+  height: 46px;
+  background: rgba(14, 18, 30, 0.85);
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mobile-secondary-btn .mobile-btn-glyph {
+  font-size: 1rem;
+}
+
+.mobile-secondary-btn .mobile-btn-text {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: #ded6bf;
+}
+
+.mobile-secondary-btn.active,
+.mobile-secondary-btn.equipped {
+  background: rgba(212, 175, 55, 0.3);
+  border-color: var(--color-gold-bright);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+}
+
+/* Primary Combat Button: Combined AIM / FIRE */
+.mobile-btn-aim-fire {
+  width: 82px;
+  height: 82px;
+  background: radial-gradient(circle, rgba(160, 36, 18, 0.88) 0%, rgba(85, 12, 6, 0.96) 100%);
+  border: 2.5px solid var(--color-gold-bright);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.75), 0 0 20px rgba(255, 120, 40, 0.5);
+  font-family: var(--font-mythic-title);
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+}
+
+.mobile-btn-aim-fire .aim-fire-glyph {
+  font-size: 1.45rem;
+}
+
+.mobile-btn-aim-fire .aim-fire-text {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  font-weight: 800;
+  color: #fff9e6;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.mobile-btn-aim-fire .aim-fire-sub {
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: #ffe6aa;
+  opacity: 0.9;
+}
+
+.mobile-btn-aim-fire.active,
+.mobile-btn-aim-fire.aiming {
+  background: radial-gradient(circle, rgba(215, 50, 24, 0.95) 0%, rgba(120, 18, 8, 1) 100%);
+  border-color: #fff3c4;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 32px rgba(255, 140, 40, 0.9);
+  transform: scale(0.94);
+}
+
+/* 5. Mobile Pause Button */
+.mobile-pause-btn {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  right: max(18px, env(safe-area-inset-right, 18px));
+  width: 44px;
+  height: 44px;
+  background: rgba(10, 14, 25, 0.86);
+  border: 1.5px solid rgba(212, 175, 55, 0.5);
+  color: var(--color-gold-bright);
+  font-size: 1.15rem;
+  z-index: 10;
+}
+
+/* 6. Portrait Warning Prompt Overlay */
+.mobile-portrait-prompt {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(5, 7, 14, 0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  pointer-events: auto;
+}
+
+.portrait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 380px;
+  gap: 0.8rem;
+}
+
+.phone-rotate-icon {
+  width: 58px;
+  height: 94px;
+  border: 2.5px solid var(--color-gold-bright);
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  animation: rotatePhone 2.2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+  0%, 20% {
+    transform: rotate(0deg);
+  }
+  50%, 80% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.phone-rotate-icon .rotate-arrow {
+  font-size: 1.8rem;
+  color: var(--color-gold-bright);
+}
+
+.portrait-title {
+  font-family: var(--font-mythic-title);
+  font-size: 1.6rem;
+  letter-spacing: 0.22em;
+  color: var(--color-gold-bright);
+}
+
+.portrait-sanskrit {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.portrait-desc {
+  font-family: var(--font-mythic-body);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #ede6d3;
+  margin: 0.4rem 0 1rem;
+}
+
+/* Media Queries & Responsive Refinements */
+@media (max-height: 520px) {
+  .mobile-joystick-zone {
+    width: 116px;
+    height: 116px;
+    bottom: 12px;
+    left: 14px;
+  }
+  .mobile-joystick-knob {
+    width: 44px;
+    height: 44px;
+  }
+  .mobile-action-cluster {
+    bottom: 12px;
+    right: 14px;
+    gap: 10px;
+    grid-template-columns: repeat(2, 50px);
+    grid-template-rows: repeat(2, 50px);
+  }
+  .mobile-btn-fire {
+    width: 62px;
+    height: 62px;
+  }
+  .mobile-btn-aim {
+    width: 52px;
+    height: 52px;
+  }
+  .mobile-secondary-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .mobile-ability-bar {
+    bottom: 12px;
+    gap: 8px;
+  }
+  .mobile-ability-btn {
+    min-width: 90px;
+    padding: 0.35rem 0.65rem;
+  }
+  .main-menu-content {
+    padding: 1rem 1.5rem !important;
+  }
+  .main-game-logo {
+    max-width: 180px !important;
+  }
+  .menu-btn {
+    padding: 0.55rem 1.4rem !important;
+    font-size: 0.9rem !important;
+  }
+  .modal-card {
+    max-height: 94vh !important;
+    padding: 1rem 1.4rem !important;
+  }
+}
+
+
 
 
 

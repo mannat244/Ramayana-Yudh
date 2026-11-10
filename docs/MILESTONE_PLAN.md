@@ -876,3 +876,102 @@ In strict compliance with the **Absolute Gameplay Protection Rule**, all underly
   - `tests/m7_10_play_again_restored.png`: Session Replayed: Restored Wave 1 & Player Spawn.
   - `tests/m7_11_return_main_menu.png`: Returned to Main Menu Cleanly.
 
+---
+
+## BONUS MILESTONE 7.1: MOBILE CONTROLS & RESPONSIVE GAMEPLAY
+
+### Objectives
+1. **Universal Device Support**: Support Android mobile browsers, iOS Safari, Mobile Chrome, touch tablets, and hybrid touchscreen laptops while keeping ordinary desktop keyboard & mouse completely unaffected.
+2. **Device Detection (`src/utils/DeviceDetector.js`)**: Capability-based detection (`pointer: coarse`, `'ontouchstart'`, `navigator.maxTouchPoints`) avoiding brittle user-agent-only checks.
+3. **Additive Mobile Input Architecture (`src/input/MobileInputController.js`)**:
+   - Translate touch events to existing player and combat systems without duplicating locomotion, physics, targeting, or animation algorithms.
+4. **Left Virtual Joystick**:
+   - Analog movement with dead zone (8px), travel limit (54px), and spring-to-center physics.
+   - Smooth vector mapping (Up = Forward, Down = Backward, Left = Strafe Left, Right = Strafe Right).
+5. **Right-Side Camera Look Area**:
+   - Drag to orbit camera yaw and pitch with sensitivity scaling and boundary clamping (-0.48 rad to +0.65 rad, preventing camera flip).
+   - Independent pointer ID tracking for simultaneous movement and camera control.
+6. **Mobile Combat Action Cluster (UI Correction)**:
+   - **Combined `AIM / FIRE` Button**:
+     - Single ergonomic combat action: pointer down immediately engages over-the-shoulder aiming.
+     - Dragging thumb while holding rotates camera yaw and pitch for accurate targeting.
+     - Releasing fires exactly one arrow at current center-reticle target and exits aim stance.
+     - Releasing or canceling safely exits without firing if interrupted.
+   - **RUN (⚡)**: Hold-to-sprint control using existing run speed and animation states.
+   - **BOW (⚔)**: Quick toggle to equip/holster bow.
+7. **Single DIVINE Button & Pop-Up Selector**:
+   - Single compact golden button (`❖ DIVINE`) replacing multiple persistent panels.
+   - Tapping displays an uncluttered pop-up selector for **Divya Bahu-Baan** (50%) and **Divya Sand Dune** (100% • Wave 2).
+   - Selecting an ability triggers execution and auto-closes selector.
+8. **Top-Left Mobile Divine Energy Meter**:
+   - Compact horizontal meter located at top-left (`DIVINE ENERGY` + percentage + glowing fill bar).
+   - Smooth filling animation from confirmed kills with zero viewport or joystick obstruction.
+9. **Mutual Exclusivity (Desktop vs Mobile HUD)**:
+   - When mobile touch mode is active: desktop location banner, desktop ability panel (`#hud-divine-panel`), and desktop pause button are suppressed (`display: none !important`).
+   - When desktop mode is active: mobile controls layer is hidden (`display: none !important`), and full desktop HUD is preserved.
+10. **Mobile Pause Control**:
+   - Unobtrusive pause button (⏸) at top-right connecting to existing pause and settings modals.
+11. **Portrait Orientation Prompt**:
+   - Rotating phone animation and bilingual instruction (English / Sanskrit) prompting landscape orientation, with choice to continue.
+12. **Responsive Screen Scaling**:
+    - Mobile landscape adaptations for Main Menu, Settings modal, Audio modal, About modal, Loading screen, and Credits screen.
+    - Safe-area insets (`env(safe-area-inset-*)`) for notched displays and rounded corners.
+
+### Controls Mapping
+
+| Action | Desktop Control | Mobile Touch Control |
+|---|---|---|
+| Move Forward / Backward | `W` / `S` (or Up / Down) | Left Virtual Joystick (Drag Up / Down) |
+| Strafe Left / Right | `A` / `D` (or Left / Right) | Left Virtual Joystick (Drag Left / Right) |
+| Look / Orbit Camera | Mouse Movement | Right Screen Touch Drag |
+| Sprint | Hold `Shift` | Hold `RUN` (⚡) Button |
+| Aim & Shoot (Archery) | Hold RMB (Aim), Click LMB (Shoot) | Hold & Drag `AIM / FIRE` (Aim), Release to Shoot |
+| Equip / Holster Bow | `E` Key | Tap `BOW` (⚔) Button |
+| Divya Bahu-Baan | `Q` Key | Tap `DIVINE` (❖) -> Tap `BAHU-BAAN` (50%) |
+| Divya Sand Dune Ultimate | `R` Key | Tap `DIVINE` (❖) -> Tap `SAND DUNE` (100%) |
+| Pause Game / Menu | `ESC` / `P` Key | Tap `PAUSE` (⏸) Button |
+
+### Browser & Device Compatibility Matrix
+
+| Platform / Browser | Status | Input Method | Notes |
+|---|---|---|---|
+| **Android Chrome (Mobile/Tablet)** | Verified (Emulated) | Touch Controls Overlay | Virtual joystick, combined AIM/FIRE, top-left energy, full 60 FPS |
+| **iOS Safari (iPhone/iPad)** | Verified (Emulated) | Touch Controls Overlay | Webkit safe area insets respected, gesture conflicts avoided |
+| **Desktop Chrome / Edge** | Verified (Native) | Keyboard & Mouse | Mobile controls completely hidden; pointer lock & WASD intact |
+| **Desktop Firefox / Safari** | Verified (Native) | Keyboard & Mouse | Standard desktop mode with high-performance WebGL renderer |
+| **Touchscreen Laptops (Hybrid)** | Verified | Dual Mode | Uses mouse by default; activates touch controls on touch |
+
+### Verification & Testing Results
+
+- **Unit Test Suite (`tests/test_milestone_7_1_unit.mjs`):**
+  - **18/18 tests passed (100% success)**:
+    - Mobile device & viewport capability detection.
+    - Virtual joystick math, clamping, dead zone, and coordinate mapping.
+    - Camera yaw, pitch clamping (-0.48 to +0.65 rad), and Invert Y.
+    - Combined `AIM / FIRE` control lifecycle, camera drag, and single arrow release.
+    - Single `DIVINE` button and pop-up ability selector toggle and execution.
+    - Desktop keyboard/mouse independence and regression safety.
+- **End-to-End Test Suite (`tests/test_milestone_7_1_e2e.mjs`):**
+  - **10/10 E2E criteria passed successfully under Chrome mobile device emulation (Pixel 7 844x390, touch points)**:
+    1. Main Menu rendering under mobile landscape emulation.
+    2. Loading screen with responsive typography and tips.
+    3. Clean Mobile Touch Controls HUD layer presence, top-left energy bar, and desktop panel suppression.
+    4. Virtual joystick locomotion (forward, backward, strafe).
+    5. Touch camera rotation (yaw and pitch).
+    6. Combined `AIM / FIRE` button (hold to aim, thumb drag camera look, release to shoot arrow).
+    7. Single `DIVINE` button & pop-up ability selector (open, select, auto-close).
+    8. Sprint (RUN) and bow equip toggling.
+    9. Mobile pause button (⏸) and in-game pause overlay.
+    10. Portrait orientation warning prompt and landscape auto-dismissal.
+- **Screenshots Captured:**
+  - `tests/m7_1_01_mobile_main_menu.png`: Responsive Main Menu on Mobile Landscape.
+  - `tests/m7_1_02_mobile_loading.png`: Mobile Loading Screen with Responsive Tips.
+  - `tests/m7_1_03_clean_mobile_hud.png`: Uncluttered Mobile HUD with Top-Left Energy, Combined Aim/Fire, and Divine Selector.
+  - `tests/m7_1_04_joystick_movement.png`: Shri Ram Locomotion Driven by Virtual Joystick.
+  - `tests/m7_1_05_camera_touch_look.png`: Touch Camera Look & Orbital Pitch.
+  - `tests/m7_1_06_combined_aim_fire.png`: Combined AIM / FIRE Action & Reticle Release.
+  - `tests/m7_1_07_divine_selector.png`: Compact DIVINE Button & Pop-Up Ability Selector.
+  - `tests/m7_1_08_mobile_pause_menu.png`: In-Game Pause Menu Triggered via Mobile Pause Button.
+  - `tests/m7_1_09_portrait_warning_prompt.png`: Rotate Device Prompt when in Portrait Mode.
+  - `tests/m7_1_10_landscape_restored.png`: Restored Landscape Mode with Mobile Controls.
+

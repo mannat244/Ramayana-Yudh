@@ -99,6 +99,10 @@ export class PlayerController {
     this.invertY = false;
     this.isPaused = false;
 
+    // Milestone 7.1 — Additive Mobile Input Hooks (Analog joystick & Touch camera)
+    this.joystickInput = new THREE.Vector2(0, 0);
+    this.joystickMagnitude = 0;
+
     // Environment References & Persistent Targeting Raycaster
     this.environmentModel = null;
     this.skyDomeMesh = null;
@@ -303,6 +307,10 @@ export class PlayerController {
 
     // Reset input states
     Object.keys(this.keys).forEach(k => { this.keys[k] = false; });
+    if (this.joystickInput) {
+      this.joystickInput.set(0, 0);
+    }
+    this.joystickMagnitude = 0;
 
     // Reset animation to idle
     if (this.animManager) {
@@ -310,6 +318,36 @@ export class PlayerController {
     }
 
     console.log(`[PlayerController] Player spawn reset to (${spawnPos.x}, ${groundY.toFixed(3)}, ${spawnPos.z}) with yaw=${initialYaw}.`);
+  }
+
+  /**
+   * Milestone 7.1 — Set directional input from mobile virtual joystick
+   * @param {number} x - Normalized horizontal strafe (-1=right, 1=left)
+   * @param {number} y - Normalized forward/backward (-1=backward, 1=forward)
+   * @param {number} [magnitude=0] - Analog displacement magnitude (0.0 to 1.0)
+   */
+  setJoystickInput(x, y, magnitude = 0) {
+    if (!this.joystickInput) {
+      this.joystickInput = new THREE.Vector2();
+    }
+    this.joystickInput.set(x, y);
+    this.joystickMagnitude = magnitude;
+  }
+
+  /**
+   * Milestone 7.1 — Rotate camera based on touch drag or mouse delta
+   * @param {number} deltaYaw - Horizontal drag delta in pixels
+   * @param {number} deltaPitch - Vertical drag delta in pixels
+   */
+  rotateCamera(deltaYaw, deltaPitch) {
+    if (this.isPaused || this.isCameraControlled) return;
+
+    const sensitivity = this.cameraSensitivity || 0.0022;
+    const pitchSign = this.invertY ? -1 : 1;
+    this.cameraYaw -= deltaYaw * sensitivity;
+
+    // Clamp vertical pitch between -28 deg (-0.48 rad) and +38 deg (+0.65 rad)
+    this.cameraPitch = Math.max(-0.48, Math.min(0.65, this.cameraPitch - deltaPitch * sensitivity * pitchSign));
   }
 
   bindEvents() {
@@ -397,13 +435,7 @@ export class PlayerController {
 
     this.onMouseMove = (e) => {
       if (!this.isPointerLocked || this.isPaused) return;
-
-      const sensitivity = this.mouseSensitivity || 0.0022;
-      const pitchSign = this.invertY ? -1 : 1;
-      this.cameraYaw -= e.movementX * sensitivity;
-
-      // Clamp vertical pitch between -28 deg and +38 deg
-      this.cameraPitch = Math.max(-0.48, Math.min(0.65, this.cameraPitch - e.movementY * sensitivity * pitchSign));
+      this.rotateCamera(e.movementX, e.movementY);
     };
 
     this.onWheel = (e) => {
@@ -620,13 +652,19 @@ export class PlayerController {
     }
 
     // 1. Calculate movement input direction
-    const rawInputZ = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-    const rawInputX = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
+    let rawInputZ = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
+    let rawInputX = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
+
+    // Milestone 7.1: Additive mobile virtual joystick input
+    if (this.joystickInput && (this.joystickInput.x !== 0 || this.joystickInput.y !== 0)) {
+      rawInputX += this.joystickInput.x;
+      rawInputZ += this.joystickInput.y;
+    }
     
     // Responsive movement input: player is never trapped or locked after shooting
     const inputZ = rawInputZ;
     const inputX = rawInputX;
-    const hasMovementInput = inputX !== 0 || inputZ !== 0;
+    const hasMovementInput = Math.abs(inputX) > 0.001 || Math.abs(inputZ) > 0.001;
 
     // 2. Select locomotion animation state for legs & hips
     if (hasMovementInput) {
@@ -635,7 +673,8 @@ export class PlayerController {
         this.currentSpeed = this.runSpeed;
       } else {
         this.animManager.playState('walk');
-        this.currentSpeed = this.walkSpeed;
+        const analogFactor = this.joystickMagnitude > 0 ? Math.max(0.35, Math.min(1.0, this.joystickMagnitude)) : 1.0;
+        this.currentSpeed = this.walkSpeed * analogFactor;
       }
     } else {
       this.animManager.playState('idle');
